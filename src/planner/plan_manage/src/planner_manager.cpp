@@ -26,6 +26,7 @@
 // #include <fstream>
 #include <plan_manage/planner_manager.h>
 #include <thread>
+#include <path_searching/thetastarGJR.h>
 
 namespace fast_planner {
 
@@ -66,7 +67,9 @@ void FastPlannerManager::initPlanModules(ros::NodeHandle& nh) {
   odom_yaw = 0;
 
   if (use_geometric_path) {
-    geo_path_finder_.reset(new Astar);
+    //geo_path_finder_.reset(new Astar);
+    geo_path_finder_.reset(new ThetastarGJR);
+
     geo_path_finder_->setParam(nh);
     geo_path_finder_->setEnvironment(edt_environment_);
     geo_path_finder_->init();

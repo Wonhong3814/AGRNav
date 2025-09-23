@@ -500,7 +500,9 @@ int main(int argc, char** argv)
   ros::NodeHandle n("~");
 
   // n.param("mesh_resource", mesh_resource, std::string("package://odom_visualization/meshes/hybrid_quadrotor.dae"));
-  n.param("mesh_resource", mesh_resource, std::string("package://odom_visualization/meshes/TABV.dae"));
+  // n.param("mesh_resource", mesh_resource, std::string("package://odom_visualization/meshes/TABV.dae"));
+  n.param("mesh_resource", mesh_resource, std::string("package://odom_visualization/meshes/AGR.dae"));
+
 
   n.param("color/r", color_r, 1.0);
   n.param("color/g", color_g, 0.0);

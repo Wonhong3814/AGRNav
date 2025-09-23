@@ -30,6 +30,7 @@
 #include <bspline/non_uniform_bspline.h>
 #include <uav_utils/geometry_utils.h>
 #include <path_searching/astar.h>
+#include "path_searching/thetastarGJR.h"
 #include <path_searching/kinodynamic_astar.h>
 #include <plan_env/edt_environment.h>
 
@@ -72,7 +73,9 @@ private:
   /* main planning algorithms & modules */
   SDFMap::Ptr sdf_map_;
   bool close_goal_traj_;
-  unique_ptr<Astar> geo_path_finder_;
+  //unique_ptr<Astar> geo_path_finder_;
+  unique_ptr<ThetastarGJR> geo_path_finder_;
+
   unique_ptr<KinodynamicAstar> kino_path_finder_;
   vector<BsplineOptimizer::Ptr> bspline_optimizers_;
   int continous_failures_count_{0};

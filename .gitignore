@@ -1,0 +1,20 @@
+# build¸
+build/
+devel/
+install/
+logs/
+
+# Velodyne raw data 
+src/perception/raw_data/velodyne/*.bin
+
+# editor / temporary files
+*.save
+*.swp
+*.swo
+*~
+*.log
+
+# Python cash
+__pycache__/
+*.pyc
+
