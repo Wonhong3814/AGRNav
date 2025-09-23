@@ -18,3 +18,6 @@ src/perception/raw_data/velodyne/*.bin
 __pycache__/
 *.pyc
 
+*.dae
+*.dae
+*.dae
