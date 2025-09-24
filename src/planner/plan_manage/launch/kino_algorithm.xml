@@ -124,6 +124,7 @@
     <param name="search/horizon" value="5.0" type="double"/>
     <param name="search/lambda_heu" value="3.0" type="double"/>
     <param name="search/resolution_astar" value="0.1" type="double"/>
+    <param name="search/resolution_thetastarGJR" value="0.1" type="double"/>
     <param name="search/time_resolution" value="0.8" type="double"/>
     <param name="search/margin" value="0.2" type="double"/>
     <param name="search/allocate_num" value="100000" type="int"/>
@@ -142,6 +143,15 @@
     <param name="astar/weight_goal" value="1" type="double"/>
     <param name="astar/aerial_penalty" value="2" type="double"/>
     <param name="astar/ground_judge" value="$(arg ground_judge)" type="double"/>
+
+    <!-- thetastargjr path searching -->
+    <param name="thetastargjr/epsilon" value="1.0" type="double"/>  
+    <param name="thetastargjr/jump_forward" value="1.4" type="double"/>
+    <param name="thetastargjr/jump_diag" value="0.926" type="double"/>
+    <param name="thetastargjr/jump_apex" value="2.1" type="double"/>
+    <param name="thetastargjr/jump_samples" value="7" type="int"/>
+    <param name="thetastargjr/jump_penalty" value="0.20" type="double"/>
+    <param name="thetastargjr/terminate_cells" value="10.0" type="double"/>
 
   <!-- trajectory optimization -->
     <param name="optimization/lambda1" value="10.0" type="double"/>     <!-- smoothness -->
