@@ -287,8 +287,10 @@ int ThetastarGJR::search(Eigen::Vector3d start_pt, Eigen::Vector3d end_pt, bool 
                         landing, &arc)) {
         continue;
       }
-      double dist = edt_environment_->evaluateCoarseEDT(landing, -1.0);
-      if (dist < margin_) continue;
+      //double dist = edt_environment_->evaluateCoarseEDT(landing, -1.0);
+      if (edt_environment_->sdf_map_->getInflateOccupancy(landing) != 0)
+      continue;
+      if (edt_environment_->sdf_map_->getInflateOccupancy(landing) ==0) continue;
       ROS_INFO("[ThetastarGJR] jump candidate accepted, arc=%zu", arc.size());
 
       Eigen::Vector3i land_id = posToIndex(landing);
