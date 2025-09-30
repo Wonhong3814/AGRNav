@@ -420,4 +420,10 @@ std::vector<Eigen::Vector3d> ThetastarGJR::sampleMotionPrimitive(PolynomialTraj 
 }
 
 std::vector<NodePtr> ThetastarGJR::getVisitedNodes() {
-  std::vector<NodePtr>
+  std::vector<NodePtr> visited;
+  visited.assign(path_node_pool_.begin(),
+                 path_node_pool_.begin() + std::max(0, use_node_num_ - 1));
+  return visited;
+}
+
+}  // namespace fast_planner
