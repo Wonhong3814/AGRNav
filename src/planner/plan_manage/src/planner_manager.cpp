@@ -51,7 +51,8 @@ void FastPlannerManager::initPlanModules(ros::NodeHandle& nh) {
   nh.param("manager/use_geometric_path", use_geometric_path, true);
   nh.param("manager/use_kinodynamic_path", use_kinodynamic_path, true);
   nh.param("manager/use_optimization", use_optimization, true);
-  nh.param("manager/planning_type", planning_type_, 0);
+  //nh.param("manager/planning_type", planning_type_, 0);
+  nh.param("manager/planning_type", planning_type_, 1);
   nh.param("sdf_map/ground_judge", ground_judge, 1.0);
   nh.param("manager/primitive_num", primitive_num_, 1);
   nh.param("fsm/thresh_replan", replan_thresh_, -1.0);
@@ -289,200 +290,67 @@ bool FastPlannerManager::kinodynamicReplan(Eigen::Vector3d start_pt, Eigen::Vect
     t_opt = (ros::Time::now() - t1).toSec();
   }
 
-  if(planning_type_ == 1){
-    //benchmark
+  if (planning_type_ == 1) {
     t1 = ros::Time::now();
     geo_path_finder_->reset();
+
     int status = geo_path_finder_->search(start_pt, end_pt, false, 0);
-    if (status == Astar::NO_PATH) {
-      cout << "[kino replan]: Astar search fail!" << endl;
-
-      // retry searching with discontinuous initial state
-      geo_path_finder_->reset();
-      status = geo_path_finder_->search(start_pt, end_pt, false, 0);
-
-      if (status == Astar::NO_PATH) {
-        cout << "[kino replan]: Can't find path." << endl;
-        return false;
-      } else {
-        cout << "[kino replan]: retry search success." << endl;
-      }
-
+    if (status == ThetastarGJR::NO_PATH) {
+      cout << "[kino replan]: Theta*GJR search fail!" << endl;
+      return false;
     } else {
-      cout << "[kino replan]: Astar search success." << endl;
+      cout << "[kino replan]: Theta*GJR search success." << endl;
     }
 
+    // 탐색 결과 저장
     local_data_.geo_astar_wpts_ = geo_path_finder_->getPath();
+
     t_search = (ros::Time::now() - t1).toSec();
-    t1 = ros::Time::now();
-    std::vector<Eigen::Vector3d> astar_grid_path = geo_path_finder_->getPath();
-    int temp_index = pp_.max_vel_ * replan_thresh_ * 2.0 / geo_astar_resolution_;
-    int astar_size = astar_grid_path.size();
-    int forward_n = min(temp_index, astar_size - 1);
-    Eigen::Vector3d motion_primitives_goal;
 
-
-    motion_primitives_goal = astar_grid_path[forward_n];
-    // if(forward_n == 0){
-    //   motion_primitives_goal = (start_pt + end_pt) / 2;
-    // }
-    // else{
-    //   motion_primitives_goal = astar_grid_path[forward_n];
-    // }
-    
-    motion_primitives_goal = astar_grid_path[forward_n];
-    //generate motion primitives
-    vector<PolynomialTraj> motion_primitive_buffer;
-    motion_primitive_buffer.resize( primitive_num_ * 3); //gnd, aerial_upper, aerial_lower
-    double lowest_score = 100000000;
-    int lowest_index, lowest_type; // 0:gnd 1:aerial_upper 2:aerial_lower
-
-    double primitive_length = (start_pt.head(2) - motion_primitives_goal.head(2)).norm() / 1.5;
-    double vertical_height = 1.2;
-    local_data_.Astar_Local_Target_ = motion_primitives_goal;
-
-    vector<Eigen::Vector3d> goal_list;
-    Eigen::Vector3d best_goal;
-    best_goal.setZero();
-
-    for(int i = 0; i < primitive_num_; i++){
-
-      double mp_orientation = odom_yaw + M_PI / primitive_num_ * i;
-      double traj_score = 0;
-      double dist = primitive_length;
-      double time = 0;
-      Eigen::Vector3d goal;
-      Eigen::MatrixXd pos(3, 3);
-      Eigen::VectorXd t(2);
-      //gnd_traj
-      PolynomialTraj gnd_traj;
-      goal << primitive_length * sin(mp_orientation) + start_pt(0) , primitive_length * cos(mp_orientation) + start_pt(1), start_pt(2);
-      goal_list.push_back(goal);
-      time = pow(pp_.max_vel_, 2) / pp_.max_acc_ > dist ? sqrt(dist / pp_.max_acc_) : (dist - pow(pp_.max_vel_, 2) / pp_.max_acc_) / pp_.max_vel_ + 2 * pp_.max_vel_ / pp_.max_acc_;
-      // time *= 1.2;
-      Eigen::Vector3d horizon_dir = ((start_pt - goal).cross(Eigen::Vector3d(0, 0, 1))).normalized();
-      Eigen::Vector3d vertical_dir = ((start_pt - goal).cross(horizon_dir)).normalized();
-      Eigen::Vector3d random_inserted_pt = (start_pt + goal) / 2 +
-                                            (((double)rand()) / RAND_MAX - 0.5) * (start_pt - goal).norm() * goal * 0.8 * (-0.978 / (continous_failures_count_ + 0.989) + 0.989) +
-                                            (((double)rand()) / RAND_MAX - 0.5) * (start_pt - goal).norm() * vertical_dir * 0.4 * (-0.978 / (continous_failures_count_ + 0.989) + 0.989);      
-      
-      random_inserted_pt = (start_pt + goal) / 2 ;
-
-      pos.col(0) = start_pt;
-      pos.col(1) = random_inserted_pt;
-      pos.col(2) = goal;      
-      
-      t(0) = t(1) = time / 2;
-      
-      gnd_traj = PolynomialTraj::minSnapTraj(pos, start_vel, Eigen::Vector3d::Zero(), start_acc, Eigen::Vector3d::Zero(), t);
-
-
-      if(!geo_path_finder_->checkMotionPrimitive(gnd_traj)) traj_score = 1000000;
-      else traj_score = geo_path_finder_->scoreMotionPrimitive(gnd_traj, goal, motion_primitives_goal);
-      if(lowest_score > traj_score){
-        lowest_score = traj_score;
-        lowest_type = 0;
-        lowest_index = i;
-        best_goal = goal;
-      }
-      motion_primitive_buffer[i] = gnd_traj;
-
-      //aerial_upper_traj
-      PolynomialTraj aerial_upper_traj;
-      if(start_pt(2) + vertical_height > motion_primitives_goal[2]){
-        goal << primitive_length * sin(mp_orientation) + start_pt(0), primitive_length * cos(mp_orientation) + start_pt(1), motion_primitives_goal[2];
-      }        
-      else {
-        goal << primitive_length * sin(mp_orientation) + start_pt(0), primitive_length * cos(mp_orientation )+ start_pt(1), start_pt(2) + vertical_height;
-      }
-
-      goal << primitive_length * sin(mp_orientation) + start_pt(0), primitive_length * cos(mp_orientation )+ start_pt(1), start_pt(2) + vertical_height;
-      dist = (start_pt - goal).norm();
-
-      goal_list.push_back(goal);
-
-      time = pow(pp_.max_vel_, 2) / pp_.max_acc_ > dist ? sqrt(dist / pp_.max_acc_) : (dist - pow(pp_.max_vel_, 2) / pp_.max_acc_) / pp_.max_vel_ + 2 * pp_.max_vel_ / pp_.max_acc_;
-      // time *= 1.2;
-      horizon_dir = ((start_pt - goal).cross(Eigen::Vector3d(0, 0, 1))).normalized();
-      vertical_dir = ((start_pt - goal).cross(horizon_dir)).normalized();
-      random_inserted_pt = (start_pt + goal) / 2 +
-                                            (((double)rand()) / RAND_MAX - 0.5) * (start_pt - goal).norm() * goal * 0.8 * (-0.978 / (continous_failures_count_ + 0.989) + 0.989) +
-                                            (((double)rand()) / RAND_MAX - 0.5) * (start_pt - goal).norm() * vertical_dir * 0.4 * (-0.978 / (continous_failures_count_ + 0.989) + 0.989);      
-
-      random_inserted_pt = (start_pt + goal) / 2 ;
-      pos.col(0) = start_pt;
-      pos.col(1) = random_inserted_pt;
-      pos.col(2) = goal;      
-
-      t(0) = t(1) = time / 2;      
-      aerial_upper_traj = PolynomialTraj::minSnapTraj(pos, start_vel, Eigen::Vector3d::Zero(), start_acc, Eigen::Vector3d::Zero(), t);
-      if(!geo_path_finder_->checkMotionPrimitive(aerial_upper_traj)) traj_score = 1000000;
-      else traj_score = geo_path_finder_->scoreMotionPrimitive(aerial_upper_traj, goal, motion_primitives_goal);
-      if(lowest_score > traj_score){
-        lowest_score = traj_score;
-        lowest_type = 1;
-        lowest_index = i;
-        best_goal = goal;
-      }
-      motion_primitive_buffer[i + primitive_num_] = aerial_upper_traj;
-
-      //aerial_lower_traj
-      PolynomialTraj aerial_lower_traj;
-      if(start_pt(2) - vertical_height < 0){
-        goal << primitive_length * sin(mp_orientation) + start_pt(0), primitive_length * cos(mp_orientation) + start_pt(1), 0;
-      }
-      else {
-        goal << primitive_length * sin(mp_orientation) + start_pt(0), primitive_length * cos(mp_orientation) + start_pt(1), start_pt(2) - vertical_height;
-      }
-
-      dist = (start_pt - goal).norm();
-      
-      goal_list.push_back(goal);
-      time = pow(pp_.max_vel_, 2) / pp_.max_acc_ > dist ? sqrt(dist / pp_.max_acc_) : (dist - pow(pp_.max_vel_, 2) / pp_.max_acc_) / pp_.max_vel_ + 2 * pp_.max_vel_ / pp_.max_acc_;
-      // time *= 1.2;
-      horizon_dir = ((start_pt - goal).cross(Eigen::Vector3d(0, 0, 1))).normalized();
-      vertical_dir = ((start_pt - goal).cross(horizon_dir)).normalized();
-      random_inserted_pt = (start_pt + goal) / 2 +
-                                            (((double)rand()) / RAND_MAX - 0.5) * (start_pt - goal).norm() * goal * 0.8 * (-0.978 / (continous_failures_count_ + 0.989) + 0.989) +
-                                            (((double)rand()) / RAND_MAX - 0.5) * (start_pt - goal).norm() * vertical_dir * 0.4 * (-0.978 / (continous_failures_count_ + 0.989) + 0.989);      
-      random_inserted_pt = (start_pt + goal) / 2 ;
-      pos.col(0) = start_pt;
-      pos.col(1) = random_inserted_pt;
-      pos.col(2) = goal;      
-
-      t(0) = t(1) = time / 2;
-      aerial_lower_traj = PolynomialTraj::minSnapTraj(pos, start_vel, Eigen::Vector3d::Zero(), start_acc, Eigen::Vector3d::Zero(), t);
-      if(!geo_path_finder_->checkMotionPrimitive(aerial_lower_traj)) traj_score = 1000000;  
-      else traj_score = geo_path_finder_->scoreMotionPrimitive(aerial_lower_traj, goal, motion_primitives_goal);
-      if(lowest_score > traj_score){
-        lowest_score = traj_score;
-        lowest_type = 2;
-        lowest_index = i;
-        best_goal = goal;
-      }
-      motion_primitive_buffer[i + 2 * primitive_num_] = aerial_lower_traj;
-
+    // 최적화용 best_traj에 단순 경로 저장
+    std::vector<Eigen::Vector3d> theta_path = geo_path_finder_->getPath();
+    if (theta_path.size() < 2) {
+      cout << "[kino replan]: path too short." << endl;
+      return false;
     }
 
-    double t_mp = (ros::Time::now() - t1).toSec();
-    cout << "t_search: " << t_search << " t_mp:" << t_mp << " best_score: " << lowest_score << endl;
-    best_traj = motion_primitive_buffer[lowest_index + lowest_type * primitive_num_];
-    //for visualization
-    for(int i = 0; i < motion_primitive_buffer.size(); i++){
-      vector<Eigen::Vector3d> primitive_wpts;
-      primitive_wpts = geo_path_finder_->sampleMotionPrimitive(motion_primitive_buffer[i], 0.001);
-      local_data_.motion_primitive_wpts_[i] = primitive_wpts;
-    }
-    
+    // PolynomialTraj로 변환 (간단히 직선 연결 or 샘플링)
+    Eigen::MatrixXd pos(3, theta_path.size());
+    Eigen::VectorXd t(theta_path.size() - 1);
 
-    local_data_.best_primitive_index_ = lowest_index + lowest_type * primitive_num_;
+    for (size_t i = 0; i < theta_path.size(); i++) {
+      pos.col(i) = theta_path[i];
+
+      // 각 구간 길이를 속도로 나눠서 시간 할당
+      if (i < theta_path.size() - 1) {
+        double dist = (theta_path[i+1] - theta_path[i]).norm();
+        t(i) = dist / std::max(0.1, pp_.max_vel_);
+      }
+    }
+
+    // 최소 스냅 트라젝토리 생성
+    PolynomialTraj traj = PolynomialTraj::minSnapTraj(
+        pos,
+        Eigen::Vector3d::Zero(),  // 시작 속도
+        Eigen::Vector3d::Zero(),  // 끝 속도
+        Eigen::Vector3d::Zero(),  // 시작 가속도
+        Eigen::Vector3d::Zero(),  // 끝 가속도
+        t
+    );
+
+    best_traj = traj;
+
+    // 시각화용
+    local_data_.motion_primitive_wpts_.clear();
+    local_data_.motion_primitive_wpts_.push_back(theta_path);
     local_data_.best_traj_ = best_traj;
     local_data_.duration_ = best_traj.getTimeSum();
-    local_data_.compute_time_ = t_search + t_mp;
+    local_data_.compute_time_ = t_search;
     continous_failures_count_ = 0;
-    
+
     return true;
   }
+
 
   // iterative time adjustment
 

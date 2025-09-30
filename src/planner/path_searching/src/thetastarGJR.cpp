@@ -98,8 +98,10 @@ static bool checkJumpArc(const EDTEnvironment::Ptr& env,
   if (try_probe(snap_z)) {
     out_target.z() = snap_z; snapped = true;
   }
-  for (int k=1; !snapped && k<=Z_SEARCH_UP;   ++k) { if (try_probe(from.z() + k*res)) { out_target.z() = from.z() + k*res; snapped = true; } }
+
   for (int k=1; !snapped && k<=Z_SEARCH_DOWN; ++k) { if (try_probe(from.z() - k*res)) { out_target.z() = from.z() - k*res; snapped = true; } }
+  for (int k=1; !snapped && k<=Z_SEARCH_UP;   ++k) { if (try_probe(from.z() + k*res)) { out_target.z() = from.z() + k*res; snapped = true; } }
+
 
   if (!snapped) {
     if (env->sdf_map_->getInflateOccupancy(out_target) != 0) return false;

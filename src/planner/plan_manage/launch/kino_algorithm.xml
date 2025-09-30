@@ -108,7 +108,8 @@
     <param name="manager/local_segment_length" value="6.0" type="double"/>
     <param name="manager/clearance_threshold" value="0.2" type="double"/>
     <param name="manager/control_points_distance" value="0.5" type="double"/>
-    <param name="manager/planning_type" value="0" type="int"/>  <!-- 0:proposed 1:benchmark-->
+
+    <param name="manager/planning_type" value="1" type="int"/>  <!-- 0:proposed 1:ThetastarGJR-->
     <param name="manager/primitive_num" value="36" type="int"/>  
 
     <param name="manager/use_geometric_path" value="true" type="bool"/>

@@ -502,6 +502,8 @@ int main(int argc, char** argv)
   // n.param("mesh_resource", mesh_resource, std::string("package://odom_visualization/meshes/hybrid_quadrotor.dae"));
   // n.param("mesh_resource", mesh_resource, std::string("package://odom_visualization/meshes/TABV.dae"));
   n.param("mesh_resource", mesh_resource, std::string("package://odom_visualization/meshes/AGR.dae"));
+  //n.param("mesh_resource", mesh_resource, std::string("package://turtlebot3_description/meshes/bases/waffle_pi.dae"));
+
 
 
   n.param("color/r", color_r, 1.0);
