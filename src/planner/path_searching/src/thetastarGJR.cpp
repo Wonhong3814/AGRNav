@@ -29,8 +29,9 @@ namespace {
   constexpr double PARABOLA_COEFF = 4.0;
   constexpr int    Z_SEARCH_UP    = 3;
   constexpr int    Z_SEARCH_DOWN  = 3;
+
   ros::Publisher jump_vis_pub;
-  int arc_id=0;
+  int arc_id = 0;
 }
 
 // ==================== Utility ====================
@@ -77,7 +78,7 @@ static bool checkJumpArc(const EDTEnvironment::Ptr& env,
   samples.reserve(num_front + 2);
 
   for (int i = 2; i <= num_front; ++i) {
-    const double t = 0.5 * (static_cast<double>(i) / static_cast<double>(num_front)); 
+    const double t = 0.5 * (static_cast<double>(i) / static_cast<double>(num_front));
     const Eigen::Vector3d horiz_world = delta_world * t;
     const double z = PARABOLA_COEFF * jump_apex * t * (1.0 - t);
     Eigen::Vector3d p = from + horiz_world + Eigen::Vector3d(0.0, 0.0, z);
@@ -100,12 +101,17 @@ static bool checkJumpArc(const EDTEnvironment::Ptr& env,
     out_target.z() = snap_z; snapped = true;
   }
 
-  for (int k=1; !snapped && k<=Z_SEARCH_DOWN; ++k) { if (try_probe(from.z() - k*res)) { out_target.z() = from.z() - k*res; snapped = true; } }
-  for (int k=1; !snapped && k<=Z_SEARCH_UP;   ++k) { if (try_probe(from.z() + k*res)) { out_target.z() = from.z() + k*res; snapped = true; } }
+  for (int k=1; !snapped && k<=Z_SEARCH_DOWN; ++k) {
+    if (try_probe(from.z() - k*res)) { out_target.z() = from.z() - k*res; snapped = true; }
+  }
+  for (int k=1; !snapped && k<=Z_SEARCH_UP;   ++k) {
+    if (try_probe(from.z() + k*res)) { out_target.z() = from.z() + k*res; snapped = true; }
+  }
 
   if (!snapped) {
     if (env->sdf_map_->getInflateOccupancy(out_target) != 0) return false;
   }
+
   if (out_samples) *out_samples = samples;
   return true;
 }
@@ -144,8 +150,8 @@ void ThetastarGJR::setParam(ros::NodeHandle& nh) {
   g_jump_samples = std::max(4, jump_samples_);
   g_jump_penalty = jump_penalty_;
   g_term_cells   = terminate_cells_;
-  jump_vis_pub = nh.advertise<visualization_msgs::Marker>("jump_arc", 10);
 
+  jump_vis_pub = nh.advertise<visualization_msgs::Marker>("jump_arc", 10);
 }
 
 void ThetastarGJR::init() {
@@ -280,30 +286,8 @@ int ThetastarGJR::search(Eigen::Vector3d start_pt, Eigen::Vector3d end_pt, bool 
       }
       double dist = edt_environment_->evaluateCoarseEDT(landing, -1.0);
       if (dist < margin_) continue;
-        ROS_INFO("[ThetastarGJR] jump candidate accepted, arc=%zu", arc.size());
-        if (jump_vis_pub) {
-        visualization_msgs::Marker m;
-        m.header.frame_id = "world";
-        m.header.stamp = ros::Time::now();
-        m.ns = "jump_arc";
-        m.id = arc_id++;
-        m.type = visualization_msgs::Marker::LINE_STRIP;
-        m.action = visualization_msgs::Marker::ADD;
-        m.scale.x = 0.05;
-        m.color.r = 0.0;
-        m.color.g = 1.0;
-        m.color.b = 0.0;
-        m.color.a = 1.0;
+      ROS_INFO("[ThetastarGJR] jump candidate accepted, arc=%zu", arc.size());
 
-        for (auto& p : arc) {
-          geometry_msgs::Point pt;
-          pt.x = p.x();
-          pt.y = p.y();
-          pt.z = p.z();
-          m.points.push_back(pt);
-        }
-        jump_vis_pub.publish(m);
-      }
       Eigen::Vector3i land_id = posToIndex(landing);
       NodePtr jump_node = expanded_nodes_.find(land_id);
       if (jump_node != NULL && jump_node->node_state == IN_CLOSE_SET) continue;
@@ -348,11 +332,35 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
                    cur_node->position - cur_node->parent->position,
                    resolution_, g_jump_apex, g_jump_samples,
                    cur_node->position, &arc);
+
+      // ✅ 최종 경로 arc만 시각화
+      if (!arc.empty() && jump_vis_pub) {
+        visualization_msgs::Marker m;
+        m.header.frame_id = "world";
+        m.header.stamp = ros::Time::now();
+        m.ns = "jump_arc";
+        m.id = arc_id++;
+        m.type = visualization_msgs::Marker::LINE_STRIP;
+        m.action = visualization_msgs::Marker::ADD;
+        m.scale.x = 0.05;
+        m.color.r = 0.0;
+        m.color.g = 1.0;
+        m.color.b = 0.0;
+        m.color.a = 1.0;
+        m.pose.orientation.w = 1.0;
+
+        for (auto& p : arc) {
+          geometry_msgs::Point pt;
+          pt.x = p.x(); pt.y = p.y(); pt.z = p.z();
+          m.points.push_back(pt);
+        }
+        jump_vis_pub.publish(m);
+      }
+
       for (auto& p : arc) {
         Node* n = new Node;
         n->position = p;
         path_nodes_.push_back(n);
-        ROS_WARN("[JumpArc-retrieve] sample z=%.2f", p.z());
       }
     }
     cur_node = cur_node->parent;
@@ -360,7 +368,6 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
   }
   reverse(path_nodes_.begin(), path_nodes_.end());
 
-  // ✅ Store last path for easy visualization
   last_path_.clear();
   for (auto* n : path_nodes_) {
     last_path_.push_back(n->position);
@@ -409,13 +416,8 @@ std::vector<Eigen::Vector3d> ThetastarGJR::sampleMotionPrimitive(PolynomialTraj 
   for (double t = 0.0; t < traj.getTimeSum(); t += td){
     wpts.push_back(traj.evaluate(t));
   }
-  return wpts;  
+  return wpts;
 }
 
 std::vector<NodePtr> ThetastarGJR::getVisitedNodes() {
-  std::vector<NodePtr> visited;
-  visited.assign(path_node_pool_.begin(), path_node_pool_.begin() + std::max(0, use_node_num_ - 1));
-  return visited;
-}
-
-}  // namespace fast_planner
+  std::vector<NodePtr>
