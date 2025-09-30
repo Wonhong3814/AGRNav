@@ -15,23 +15,22 @@ using namespace Eigen;
 namespace fast_planner
 {
 
-// ==================== Theta* & Jump 파라미터 (ROS 파라미터로 설정) ====================
+// ==================== Theta* & Jump Parameters ====================
 namespace {
-  // 점프/스무딩 파라미터 기본값
-  double g_theta_eps     = 1.0;   // tie-breaker 보정(필요시)
-  double g_jump_forward  = 0.6;
-  double g_jump_diag     = 0.42;
-  double g_jump_apex     = 1.5;
-  int    g_jump_samples  = 7;     // 최소 4
+  double g_theta_eps     = 1.0;
+  double g_jump_forward  = 1.4;
+  double g_jump_diag     = 0.926;
+  double g_jump_apex     = 2.1;
+  int    g_jump_samples  = 7;
   double g_jump_penalty  = 0.20;
-  double g_term_cells    = 1.0;
+  double g_term_cells    = 10.0;
 
   constexpr double PARABOLA_COEFF = 4.0;
   constexpr int    Z_SEARCH_UP    = 3;
   constexpr int    Z_SEARCH_DOWN  = 3;
 }
 
-// ==================== 유틸 ====================
+// ==================== Utility ====================
 static bool hasLineOfSight(const EDTEnvironment::Ptr& env,
                            const Eigen::Vector3d& a,
                            const Eigen::Vector3d& b,
@@ -109,7 +108,7 @@ static bool checkJumpArc(const EDTEnvironment::Ptr& env,
   return true;
 }
 
-// ==================== ThetastarGJR 구현 ====================
+// ==================== ThetastarGJR Implementation ====================
 
 ThetastarGJR::~ThetastarGJR() {
   for (int i = 0; i < allocate_num_; i++) {
@@ -129,12 +128,12 @@ void ThetastarGJR::setParam(ros::NodeHandle& nh) {
   tie_breaker_ = 1.0 + 1.0 / 10000;
 
   nh.param("thetastargjr/epsilon",          epsilon_,        1.0);
-  nh.param("thetastargjr/jump_forward",     jump_forward_,   1.4);
-  nh.param("thetastargjr/jump_diag",        jump_diag_,      0.926);
-  nh.param("thetastargjr/jump_apex",        jump_apex_,      2.1);
+  nh.param("thetastargjr/jump_forward",     jump_forward_,   1.6);
+  nh.param("thetastargjr/jump_diag",        jump_diag_,      0.42);
+  nh.param("thetastargjr/jump_apex",        jump_apex_,      1.5);
   nh.param("thetastargjr/jump_samples",     jump_samples_,   7);
   nh.param("thetastargjr/jump_penalty",     jump_penalty_,   0.20);
-  nh.param("thetastargjr/terminate_cells",  terminate_cells_,10.0);
+  nh.param("thetastargjr/terminate_cells",  terminate_cells_,1.0);
 
   g_theta_eps    = epsilon_;
   g_jump_forward = jump_forward_;
@@ -266,7 +265,7 @@ int ThetastarGJR::search(Eigen::Vector3d start_pt, Eigen::Vector3d end_pt, bool 
     iter_num_ += 1;
     const Eigen::Vector3d cur_pos = cur_node->position;
 
-    // 점프 확장
+    // Jump expansion
     for (const auto& db : jump_prims) {
       Eigen::Vector3d landing;
       std::vector<Eigen::Vector3d> arc;
@@ -333,9 +332,16 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
     path_nodes_.push_back(cur_node);
   }
   reverse(path_nodes_.begin(), path_nodes_.end());
+
+  // ✅ Store last path for easy visualization
+  last_path_.clear();
+  for (auto* n : path_nodes_) {
+    last_path_.push_back(n->position);
+  }
 }
 
 std::vector<Eigen::Vector3d> ThetastarGJR::getPath() {
+  if (!last_path_.empty()) return last_path_;
   vector<Eigen::Vector3d> path;
   path.reserve(path_nodes_.size());
   for (int i = 0; i < (int)path_nodes_.size(); ++i) {
