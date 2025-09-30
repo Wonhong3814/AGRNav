@@ -80,7 +80,10 @@ static bool checkJumpArc(const EDTEnvironment::Ptr& env,
     const double z = PARABOLA_COEFF * jump_apex * t * (1.0 - t);
     Eigen::Vector3d p = from + horiz_world + Eigen::Vector3d(0.0, 0.0, z);
 
-    if (env->sdf_map_->getInflateOccupancy(p) != 0) return false;
+    //if (env->sdf_map_->getInflateOccupancy(p) != 0) return false;
+    double dist = env->evaluateCoarseEDT(p, -1.0);
+    if (dist < 0.0 || dist < 0.5) return false; // margin ê¸
+
     samples.push_back(p);
   }
 
@@ -104,7 +107,9 @@ static bool checkJumpArc(const EDTEnvironment::Ptr& env,
 
 
   if (!snapped) {
-    if (env->sdf_map_->getInflateOccupancy(out_target) != 0) return false;
+    //if (env->sdf_map_->getInflateOccupancy(out_target) != 0) return false;
+    double dist = env->evaluateCoarseEDT(out_target, -1.0); 
+    if (dist < 0.0 || dist < 0.5) return false;
   }
 
   if (out_samples) *out_samples = samples;
