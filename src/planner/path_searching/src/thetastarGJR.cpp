@@ -275,7 +275,7 @@ int ThetastarGJR::search(Eigen::Vector3d start_pt, Eigen::Vector3d end_pt, bool 
     iter_num_ += 1;
     const Eigen::Vector3d cur_pos = cur_node->position;
 
-    // Jump expansion
+    // Jump expansion (no visualization here!)
     for (const auto& db : jump_prims) {
       Eigen::Vector3d landing;
       std::vector<Eigen::Vector3d> arc;
@@ -333,7 +333,7 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
                    resolution_, g_jump_apex, g_jump_samples,
                    cur_node->position, &arc);
 
-      // ✅ 최종 경로 arc만 시각화
+      // ✅ 최종 선택된 arc만 시각화
       if (!arc.empty() && jump_vis_pub) {
         visualization_msgs::Marker m;
         m.header.frame_id = "world";
