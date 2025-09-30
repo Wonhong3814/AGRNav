@@ -12,6 +12,7 @@
 */
 
 #include <plan_manage/kino_replan_fsm.h>
+#include <traj_utils/polynomial_traj.h>   // ✅ PolynomialTraj 변환 유틸
 
 namespace fast_planner {
 
@@ -141,11 +142,8 @@ void KinoReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
       start_acc_.setZero();
 
       bool success = callKinodynamicReplan();
-      if (success) {
-        changeFSMExecState(EXEC_TRAJ, "FSM");
-      } else {
-        changeFSMExecState(GEN_NEW_TRAJ, "FSM");
-      }
+      if (success) changeFSMExecState(EXEC_TRAJ, "FSM");
+      else changeFSMExecState(GEN_NEW_TRAJ, "FSM");
       break;
     }
     case EXEC_TRAJ: {
@@ -164,20 +162,24 @@ void KinoReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
       replan_pub_.publish(replan_msg);
 
       bool success = callKinodynamicReplan();
-      if (success) {
-        changeFSMExecState(EXEC_TRAJ, "FSM");
-      } else {
-        changeFSMExecState(GEN_NEW_TRAJ, "FSM");
-      }
+      if (success) changeFSMExecState(EXEC_TRAJ, "FSM");
+      else changeFSMExecState(GEN_NEW_TRAJ, "FSM");
       break;
     }
   }
 }
 
 void KinoReplanFSM::checkCollisionCallback(const ros::TimerEvent& e) {
-  if (!have_target_) return;
+  if (!have_target_ || last_path_.empty()) return;
 
-  // TODO: collision checking using ThetaStar path if needed
+  for (auto& p : last_path_) {
+    double dist = planner_manager_->edt_environment_->evaluateCoarseEDT(p, -1.0);
+    if (dist < 0.3) {  // threshold
+      ROS_WARN("[ThetastarGJR] Collision detected along path. Triggering replan.");
+      changeFSMExecState(REPLAN_TRAJ, "SAFETY");
+      return;
+    }
+  }
 }
 
 bool KinoReplanFSM::callKinodynamicReplan() {
@@ -185,15 +187,46 @@ bool KinoReplanFSM::callKinodynamicReplan() {
   int result = thetastar_gjr_.search(start_pt_, end_pt_, false, 0.0);
 
   if (result == ThetastarGJR::REACH_END) {
-    std::vector<Eigen::Vector3d> path = thetastar_gjr_.getPath();
+    last_path_ = thetastar_gjr_.getPath();
 
-    if (path.empty()) {
+    if (last_path_.empty()) {
       ROS_WARN("[ThetastarGJR] Path is empty.");
       return false;
     }
 
-    visualization_->drawGeometricPath(path, 0.1, Eigen::Vector4d(1, 0, 0, 1.0));
-    ROS_INFO("[ThetastarGJR] Jump path planning success. Path length = %zu", path.size());
+    // ✅ RViz에 시각화 (green line)
+    visualization_->displayPathList(last_path_, 0.15,
+                                    Eigen::Vector4d(0.0, 1.0, 0.0, 1.0),
+                                    "gjr_path");
+
+    // ✅ Trajectory 변환 후 퍼블리시
+    PolynomialTraj poly_traj;
+    poly_traj = PolynomialTraj::fitFromWaypoints(last_path_, 5.0);  // 5초짜리 fitting 예시
+
+    quadrotor_msgs::PolynomialTrajectory trajMsg;
+    trajMsg.header.stamp = ros::Time::now();
+    trajMsg.header.frame_id = "world";
+    trajMsg.trajectory_id = ros::Time::now().toNSec();
+
+    trajMsg.num_order = 5;
+    trajMsg.num_segment = poly_traj.getPieceNum();
+    trajMsg.time = poly_traj.getTimes();
+
+    for (int dim = 0; dim < 3; ++dim) {
+      auto coef = poly_traj.getCoef(dim);
+      for (auto& seg : coef) {
+        for (auto& c : seg) {
+          if (dim == 0) trajMsg.coef_x.push_back(c);
+          if (dim == 1) trajMsg.coef_y.push_back(c);
+          if (dim == 2) trajMsg.coef_z.push_back(c);
+        }
+        trajMsg.order.push_back(poly_traj.getOrder());
+      }
+    }
+
+    poly_pub_.publish(trajMsg);
+
+    ROS_INFO("[ThetastarGJR] Jump path planning success. Path length = %zu", last_path_.size());
     return true;
   } else {
     ROS_WARN("[ThetastarGJR] Jump path planning failed.");
