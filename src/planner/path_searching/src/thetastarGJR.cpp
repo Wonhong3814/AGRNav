@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <sstream>
 #include <iostream>
+#include <visualization_msgs/Marker.h>
 
 using namespace std;
 using namespace Eigen;
@@ -28,6 +29,8 @@ namespace {
   constexpr double PARABOLA_COEFF = 4.0;
   constexpr int    Z_SEARCH_UP    = 3;
   constexpr int    Z_SEARCH_DOWN  = 3;
+  ros::Publisher jump_vis_pub;
+  int arc_id=0;
 }
 
 // ==================== Utility ====================
@@ -141,6 +144,8 @@ void ThetastarGJR::setParam(ros::NodeHandle& nh) {
   g_jump_samples = std::max(4, jump_samples_);
   g_jump_penalty = jump_penalty_;
   g_term_cells   = terminate_cells_;
+  jump_vis_pub = nh.advertise<visualization_msgs::Marker>("jump_arc", 10);
+
 }
 
 void ThetastarGJR::init() {
@@ -275,8 +280,30 @@ int ThetastarGJR::search(Eigen::Vector3d start_pt, Eigen::Vector3d end_pt, bool 
       }
       double dist = edt_environment_->evaluateCoarseEDT(landing, -1.0);
       if (dist < margin_) continue;
-      ROS_INFO("[ThetastarGJR] jump candidate accepted, arc=%zu", arc.size());
+        ROS_INFO("[ThetastarGJR] jump candidate accepted, arc=%zu", arc.size());
+        if (jump_vis_pub) {
+        visualization_msgs::Marker m;
+        m.header.frame_id = "world";
+        m.header.stamp = ros::Time::now();
+        m.ns = "jump_arc";
+        m.id = arc_id++;
+        m.type = visualization_msgs::Marker::LINE_STRIP;
+        m.action = visualization_msgs::Marker::ADD;
+        m.scale.x = 0.05;
+        m.color.r = 0.0;
+        m.color.g = 1.0;
+        m.color.b = 0.0;
+        m.color.a = 1.0;
 
+        for (auto& p : arc) {
+          geometry_msgs::Point pt;
+          pt.x = p.x();
+          pt.y = p.y();
+          pt.z = p.z();
+          m.points.push_back(pt);
+        }
+        jump_vis_pub.publish(m);
+      }
       Eigen::Vector3i land_id = posToIndex(landing);
       NodePtr jump_node = expanded_nodes_.find(land_id);
       if (jump_node != NULL && jump_node->node_state == IN_CLOSE_SET) continue;
