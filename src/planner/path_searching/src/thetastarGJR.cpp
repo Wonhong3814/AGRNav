@@ -78,16 +78,13 @@ static bool checkJumpArc(const EDTEnvironment::Ptr& env,
 
   std::vector<Eigen::Vector3d> samples;
   samples.reserve(steps);
-
+  
+  Eigen::Vector2d delta_xy = delta_world.head<2>();
   for (int i = 1; i <= steps; ++i) {
     double t = static_cast<double>(i) / steps;   // ìratio 0~1
-    Eigen::Vector3d horiz_world = delta_world * t;
-
-    // parabola height
-    double z = PARABOLA_COEFF * jump_apex * t * (1.0 - t);
-
-    // points on arcs
-    Eigen::Vector3d p = from + horiz_world + Eigen::Vector3d(0.0, 0.0, z);
+    Eigen::Vector2d step_xy = delta_xy * t;  //xy
+    double z = PARABOLA_COEFF * jump_apex * t * (1.0 - t);  // z 
+    Eigen::Vector3d p = from + Eigen::Vector3d(step_xy.x(), step_xy.y(), z);  //p
 
     // ì¶col check
     if (env->sdf_map_->getInflateOccupancy(p) != 0) {
