@@ -45,6 +45,7 @@
 #include <traj_utils/planning_visualization.h>
 #include <traj_utils/polynomial_traj.h>
 #include "quadrotor_msgs/PolynomialTrajectory.h"
+#include <path_searching/thetastarGJR.h>
 
 using std::vector;
 
@@ -88,6 +89,8 @@ private:
   double waypoints_[50][3];
   int waypoint_num_;
   bool time_init_flag;
+  ThetastarGJR thetastar_gjr_;
+  bool use_jump_planner_;
 
   /* planning data */
   bool trigger_, have_target_, have_odom_;
@@ -108,6 +111,7 @@ private:
 
   /* helper functions */
   bool callKinodynamicReplan();        // front-end and back-end method
+  bool callThetaStarReplan();
   void changeFSMExecState(FSM_EXEC_STATE new_state, string pos_call);
   void printFSMExecState();
   

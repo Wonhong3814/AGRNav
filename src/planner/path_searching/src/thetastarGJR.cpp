@@ -19,12 +19,12 @@ namespace fast_planner
 namespace {
   // 점프/스무딩 파라미터 기본값
   double g_theta_eps     = 1.0;   // tie-breaker 보정(필요시)
-  double g_jump_forward  = 1.4;
-  double g_jump_diag     = 0.926;
-  double g_jump_apex     = 2.1;
+  double g_jump_forward  = 0.6;
+  double g_jump_diag     = 0.42;
+  double g_jump_apex     = 1.5;
   int    g_jump_samples  = 7;     // 최소 4
   double g_jump_penalty  = 0.20;
-  double g_term_cells    = 10.0;
+  double g_term_cells    = 1.0;
 
   constexpr double PARABOLA_COEFF = 4.0;
   constexpr int    Z_SEARCH_UP    = 3;
