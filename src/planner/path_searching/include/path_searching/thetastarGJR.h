@@ -30,7 +30,7 @@ private:
   NodeHashTable0 expanded_nodes_;
   std::priority_queue<NodePtr, std::vector<NodePtr>, NodeComparator0> open_set_;
   std::vector<NodePtr> path_nodes_;
-
+  std::vector<Eigen::Vector3d> last_path_;
   /* ---------- record data ---------- */
   EDTEnvironment::Ptr edt_environment_;
   bool has_path_ = false;
