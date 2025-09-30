@@ -21,3 +21,5 @@ __pycache__/
 *.dae
 *.dae
 *.dae
+src/perception/raw_data/voxels/
+*.bin
