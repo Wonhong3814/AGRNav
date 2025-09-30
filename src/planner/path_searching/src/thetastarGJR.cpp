@@ -103,7 +103,6 @@ static bool checkJumpArc(const EDTEnvironment::Ptr& env,
   if (!snapped) {
     if (env->sdf_map_->getInflateOccupancy(out_target) != 0) return false;
   }
-
   if (out_samples) *out_samples = samples;
   return true;
 }
@@ -326,6 +325,7 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
         Node* n = new Node;
         n->position = p;
         path_nodes_.push_back(n);
+        ROS_WARN("[JumpArc-retrieve] sample z=%.2f", p.z());
       }
     }
     cur_node = cur_node->parent;
@@ -346,6 +346,9 @@ std::vector<Eigen::Vector3d> ThetastarGJR::getPath() {
   path.reserve(path_nodes_.size());
   for (int i = 0; i < (int)path_nodes_.size(); ++i) {
     path.push_back(path_nodes_[i]->position);
+  }
+  for (auto &n : path) {
+    ROS_INFO("[ThetastarGJR Path] (%.2f, %.2f, %.2f)", n.x(), n.y(), n.z());
   }
   return path;
 }
