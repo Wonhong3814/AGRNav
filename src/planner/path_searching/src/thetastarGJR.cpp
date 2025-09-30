@@ -20,8 +20,8 @@ namespace fast_planner
 namespace {
   double g_theta_eps     = 1.0;
   //double g_jump_forward  = 1.4;
-  double g_jump_forward  = 0.6;
-  double g_jump_diag = 0.42;
+  double g_jump_forward  = 3.0;
+  double g_jump_diag = 2.12;
   //double g_jump_diag     = 0.926;
   double g_jump_apex     = 2.1;
   int    g_jump_samples  = 7;
@@ -73,25 +73,32 @@ static bool checkJumpArc(const EDTEnvironment::Ptr& env,
   const double horiz_len = delta_world.head<2>().norm();
   if (horiz_len <= 1e-9) return false;
 
-  const double desired_step_xy = res;
-  int num_front_by_res = static_cast<int>(std::ceil(0.5 * horiz_len / desired_step_xy));
-  int num_front = std::max(3, std::min(50, std::max(jump_samples, num_front_by_res)));
+  int steps = std::ceil(horiz_len / res);
+  if (steps < 2) steps = 2;  // ìat least 2
 
   std::vector<Eigen::Vector3d> samples;
-  samples.reserve(num_front + 2);
+  samples.reserve(steps);
 
-  for (int i = 2; i <= num_front; ++i) {
-    const double t = 0.5 * (static_cast<double>(i) / static_cast<double>(num_front));
-    const Eigen::Vector3d horiz_world = delta_world * t;
-    const double z = PARABOLA_COEFF * jump_apex * t * (1.0 - t);
+  for (int i = 1; i <= steps; ++i) {
+    double t = static_cast<double>(i) / steps;   // ìratio 0~1
+    Eigen::Vector3d horiz_world = delta_world * t;
+
+    // parabola height
+    double z = PARABOLA_COEFF * jump_apex * t * (1.0 - t);
+
+    // points on arcs
     Eigen::Vector3d p = from + horiz_world + Eigen::Vector3d(0.0, 0.0, z);
 
-    if (env->sdf_map_->getInflateOccupancy(p) != 0) return false;
+    // ì¶col check
+    if (env->sdf_map_->getInflateOccupancy(p) != 0) {
+      return false;  
+    }
+
     samples.push_back(p);
   }
-
+  //landing points
   out_target = from + delta_world;
-
+  //landing points "z"
   auto try_probe = [&](double z)->bool{
     Eigen::Vector3d probe = out_target;
     probe.z() = z;
@@ -139,16 +146,16 @@ void ThetastarGJR::setParam(ros::NodeHandle& nh) {
   tie_breaker_ = 1.0 + 1.0 / 10000;
 
   nh.param("thetastargjr/epsilon",          epsilon_,        1.0);
-  nh.param("thetastargjr/jump_forward",     jump_forward_,   1.6);
-  nh.param("thetastargjr/jump_diag",        jump_diag_,      0.42);
+  nh.param("thetastargjr/jump_forward",     jump_forward_,   3.0); //3.0 * resolution_
+  nh.param("thetastargjr/jump_diag",        jump_diag_,      2.12); //2.12 * resolution_
   nh.param("thetastargjr/jump_apex",        jump_apex_,      1.5);
   nh.param("thetastargjr/jump_samples",     jump_samples_,   7);
   nh.param("thetastargjr/jump_penalty",     jump_penalty_,   0.20);
   nh.param("thetastargjr/terminate_cells",  terminate_cells_,1.0);
 
   g_theta_eps    = epsilon_;
-  g_jump_forward = jump_forward_;
-  g_jump_diag    = jump_diag_;
+  g_jump_forward = jump_forward_ * resolution_;
+  g_jump_diag    = jump_diag_ * resolution_;
   g_jump_apex    = jump_apex_;
   g_jump_samples = std::max(4, jump_samples_);
   g_jump_penalty = jump_penalty_;
@@ -290,7 +297,6 @@ int ThetastarGJR::search(Eigen::Vector3d start_pt, Eigen::Vector3d end_pt, bool 
       //double dist = edt_environment_->evaluateCoarseEDT(landing, -1.0);
       if (edt_environment_->sdf_map_->getInflateOccupancy(landing) != 0)
       continue;
-      if (edt_environment_->sdf_map_->getInflateOccupancy(landing) ==0) continue;
       ROS_INFO("[ThetastarGJR] jump candidate accepted, arc=%zu", arc.size());
 
       Eigen::Vector3i land_id = posToIndex(landing);
@@ -332,7 +338,7 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
 
   while (cur_node->parent != NULL) {
     //if (fabs((cur_node->position - cur_node->parent->position).z()) > 1e-3) {
-    if (fabs((cur_node->position - cur_node->parent->position).z()) > 0.5) {
+    //if (fabs((cur_node->position - cur_node->parent->position).z()) > 0.5) {
       std::vector<Eigen::Vector3d> arc;
       checkJumpArc(edt_environment_, cur_node->parent->position,
                    cur_node->position - cur_node->parent->position,
@@ -368,7 +374,7 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
         n->position = p;
         path_nodes_.push_back(n);
       }
-    }
+    //}
     cur_node = cur_node->parent;
     path_nodes_.push_back(cur_node);
   }
