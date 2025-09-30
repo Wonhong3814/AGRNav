@@ -19,12 +19,15 @@ namespace fast_planner
 // ==================== Theta* & Jump Parameters ====================
 namespace {
   double g_theta_eps     = 1.0;
-  double g_jump_forward  = 1.4;
-  double g_jump_diag     = 0.926;
+  //double g_jump_forward  = 1.4;
+  double g_jump_forward  = 0.6;
+  double g_jump_diag = 0.42;
+  //double g_jump_diag     = 0.926;
   double g_jump_apex     = 2.1;
   int    g_jump_samples  = 7;
-  double g_jump_penalty  = 0.20;
-  double g_term_cells    = 10.0;
+  //double g_jump_penalty  = 0.20;
+  double g_jump_penalty = 0.00;
+  double g_term_cells    = 1.0;
 
   constexpr double PARABOLA_COEFF = 4.0;
   constexpr int    Z_SEARCH_UP    = 3;
@@ -326,7 +329,8 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
   path_nodes_.push_back(cur_node);
 
   while (cur_node->parent != NULL) {
-    if (fabs((cur_node->position - cur_node->parent->position).z()) > 1e-3) {
+    //if (fabs((cur_node->position - cur_node->parent->position).z()) > 1e-3) {
+    if (fabs((cur_node->position - cur_node->parent->position).z()) > 0.5) {
       std::vector<Eigen::Vector3d> arc;
       checkJumpArc(edt_environment_, cur_node->parent->position,
                    cur_node->position - cur_node->parent->position,
