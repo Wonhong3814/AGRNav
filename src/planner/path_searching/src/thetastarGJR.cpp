@@ -164,9 +164,8 @@ void ThetastarGJR::setParam(ros::NodeHandle& nh) {
   g_term_cells   = terminate_cells_;
 
   jump_vis_pub = nh.advertise<visualization_msgs::Marker>("jump_arc", 10);
-  jump_poscmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("jump_pos_cmd", 10);
-  //geometry_msgs::PoseStamped pose_stamped;
-  jump_poscmd_pub = nh.advertise<geometry_msgs::PoseStamped>("jump_pos_cmd", 10);
+  //jump_poscmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("jump_pos_cmd", 10);
+  jump_poscmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("/planning/pos_cmd", 10);
 }
 
 void ThetastarGJR::init() {
@@ -403,7 +402,7 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
             cmd.yaw_dot = 0.0;
 
             jump_poscmd_pub.publish(cmd);
-            ros::Duration(dt).sleep();  // periodic
+            //ros::Duration(dt).sleep();  // periodic
           }
         }
 
