@@ -9,6 +9,7 @@
 #include <sstream>
 #include <iostream>
 #include <visualization_msgs/Marker.h>
+#include <geometry_msgs/PoseStamped.h>
 
 using namespace std;
 using namespace Eigen;
@@ -34,6 +35,7 @@ namespace {
   constexpr int    Z_SEARCH_DOWN  = 3;
 
   ros::Publisher jump_vis_pub;
+  ros::Publisher jump_poscmd_pub;
   int arc_id = 0;
 }
 
@@ -161,6 +163,7 @@ void ThetastarGJR::setParam(ros::NodeHandle& nh) {
   g_term_cells   = terminate_cells_;
 
   jump_vis_pub = nh.advertise<visualization_msgs::Marker>("jump_arc", 10);
+  jump_poscmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("jump_pos_cmd", 10);
 }
 
 void ThetastarGJR::init() {
@@ -367,13 +370,44 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
         }
         //m.lifetime = ros::Duration(1);
         jump_vis_pub.publish(m);
-      }
+        if (!arc.empty() && jump_poscmd_pub) {
+          double dt = 0.05; // 20Hz
+          for (size_t i = 0; i < arc.size(); ++i) {
+            quadrotor_msgs::PositionCommand cmd;
+            cmd.header.stamp = ros::Time::now();
+            cmd.header.frame_id = "world";
 
-      for (auto& p : arc) {
-        Node* n = new Node;
-        n->position = p;
-        path_nodes_.push_back(n);
-      }
+            cmd.position.x = arc[i].x();
+            cmd.position.y = arc[i].y();
+            cmd.position.z = arc[i].z();
+
+            // ëvelocity estimate
+            if (i > 0) {
+              Eigen::Vector3d vel = (arc[i] - arc[i-1]) / dt;
+              cmd.velocity.x = vel.x();
+              cmd.velocity.y = vel.y();
+              cmd.velocity.z = vel.z();
+            } else {
+              cmd.velocity.x = cmd.velocity.y = cmd.velocity.z = 0.0;
+            }
+
+            cmd.acceleration.x = 0.0;
+            cmd.acceleration.y = 0.0;
+            cmd.acceleration.z = 0.0;
+
+            cmd.yaw = 0.0;
+            cmd.yaw_dot = 0.0;
+
+            jump_poscmd_pub.publish(cmd);
+            ros::Duration(dt).sleep();  // periodic
+          }
+        }
+
+        for (auto& p : arc) {
+          Node* n = new Node;
+          n->position = p;
+          path_nodes_.push_back(n);
+        } 
     //}
     cur_node = cur_node->parent;
     path_nodes_.push_back(cur_node);
