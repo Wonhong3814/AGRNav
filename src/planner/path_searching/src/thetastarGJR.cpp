@@ -349,7 +349,7 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
                    resolution_, g_jump_apex, g_jump_samples,
                    cur_node->position, &arc);
 
-      // ✅ 최종 선택된 arc만 시각화
+      // �visualization
       if (!arc.empty() && jump_vis_pub) {
         visualization_msgs::Marker m;
         m.header.frame_id = "world";
@@ -387,9 +387,9 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
             // �velocity estimate
             if (i > 0) {
               Eigen::Vector3d vel = (arc[i] - arc[i-1]) / dt;
-              cmd.velocity.x = vel.x();
-              cmd.velocity.y = vel.y();
-              cmd.velocity.z = vel.z();
+              cmd.velocity.x = vel.x()/10;
+              cmd.velocity.y = vel.y()/10;
+              cmd.velocity.z = vel.z()/10;
             } else {
               cmd.velocity.x = cmd.velocity.y = cmd.velocity.z = 0.0;
             }
