@@ -20,8 +20,8 @@ namespace fast_planner
 namespace {
   double g_theta_eps     = 1.0;
   //double g_jump_forward  = 1.4;
-  double g_jump_forward  = 3.0;
-  double g_jump_diag = 2.12;
+  double g_jump_forward  = 10.0;
+  double g_jump_diag = 8.12;
   //double g_jump_diag     = 0.926;
   double g_jump_apex     = 2.1;
   int    g_jump_samples  = 7;
@@ -73,14 +73,16 @@ static bool checkJumpArc(const EDTEnvironment::Ptr& env,
   const double horiz_len = delta_world.head<2>().norm();
   if (horiz_len <= 1e-9) return false;
 
-  int steps = std::ceil(horiz_len / res);
+  //int steps = std::ceil(horiz_len / res);
+  int steps = std::max(10, (int)std::ceil(horiz_len / res));
+
   if (steps < 2) steps = 2;  // ìat least 2
 
   std::vector<Eigen::Vector3d> samples;
   samples.reserve(steps);
   
   Eigen::Vector2d delta_xy = delta_world.head<2>();
-  for (int i = 1; i <= steps; ++i) {
+  for (int i = 0; i <= steps; ++i) {
     double t = static_cast<double>(i) / steps;   // ìratio 0~1
     Eigen::Vector2d step_xy = delta_xy * t;  //xy
     double z = PARABOLA_COEFF * jump_apex * t * (1.0 - t);  // z 
@@ -143,8 +145,8 @@ void ThetastarGJR::setParam(ros::NodeHandle& nh) {
   tie_breaker_ = 1.0 + 1.0 / 10000;
 
   nh.param("thetastargjr/epsilon",          epsilon_,        1.0);
-  nh.param("thetastargjr/jump_forward",     jump_forward_,   3.0); //3.0 * resolution_
-  nh.param("thetastargjr/jump_diag",        jump_diag_,      2.12); //2.12 * resolution_
+  nh.param("thetastargjr/jump_forward",     jump_forward_,   100.0); //3.0 * resolution_
+  nh.param("thetastargjr/jump_diag",        jump_diag_,      80.12); //2.12 * resolution_
   nh.param("thetastargjr/jump_apex",        jump_apex_,      1.5);
   nh.param("thetastargjr/jump_samples",     jump_samples_,   7);
   nh.param("thetastargjr/jump_penalty",     jump_penalty_,   0.20);
@@ -363,6 +365,7 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
           pt.x = p.x(); pt.y = p.y(); pt.z = p.z();
           m.points.push_back(pt);
         }
+        //m.lifetime = ros::Duration(1);
         jump_vis_pub.publish(m);
       }
 
