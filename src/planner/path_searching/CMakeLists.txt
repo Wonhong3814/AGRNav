@@ -12,13 +12,14 @@ find_package(catkin REQUIRED COMPONENTS
   plan_env
   cv_bridge
   traj_utils
+  quadrotor_msgs
 )
 
 
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES path_searching
- CATKIN_DEPENDS plan_env traj_utils 
+ CATKIN_DEPENDS plan_env traj_utils quadrotor_msgs 
 #  DEPENDS system_lib
 )
 
