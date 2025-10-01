@@ -10,9 +10,12 @@
 #include <iostream>
 #include <visualization_msgs/Marker.h>
 #include <geometry_msgs/PoseStamped.h>
+ 
+#include <quadrotor_msgs/PositionCommand>
 
 using namespace std;
 using namespace Eigen;
+geometry_msgs/Vector3 velocity
 
 namespace fast_planner
 {
@@ -163,7 +166,9 @@ void ThetastarGJR::setParam(ros::NodeHandle& nh) {
   g_term_cells   = terminate_cells_;
 
   jump_vis_pub = nh.advertise<visualization_msgs::Marker>("jump_arc", 10);
-  jump_poscmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("jump_pos_cmd", 10);
+  //jump_poscmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("jump_pos_cmd", 10);
+  //geometry_msgs::PoseStamped pose_stamped;
+  jump_poscmd_pub = nh.advertise<geometry_msgs::PoseStamped>("jump_pos_cmd", 10);
 }
 
 void ThetastarGJR::init() {
@@ -373,20 +378,24 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
         if (!arc.empty() && jump_poscmd_pub) {
           double dt = 0.05; // 20Hz
           for (size_t i = 0; i < arc.size(); ++i) {
-            quadrotor_msgs::PositionCommand cmd;
+            geometry_msgs::PoseStamped cmd;
+            //quadrotor_msgs::PositionCommand cmd;
             cmd.header.stamp = ros::Time::now();
             cmd.header.frame_id = "world";
 
-            cmd.position.x = arc[i].x();
-            cmd.position.y = arc[i].y();
-            cmd.position.z = arc[i].z();
+            //cmd.position.x = arc[i].x();
+            //cmd.position.y = arc[i].y();
+            //cmd.position.z = arc[i].z();
+            cmd.pose.position.x = arc[i].x();
+            cmd.pose.position.y = arc[i].y();
+            cmd.pose.position.z = arc[i].z();
 
             // ëvelocity estimate
             if (i > 0) {
               Eigen::Vector3d vel = (arc[i] - arc[i-1]) / dt;
-              cmd.velocity.x = vel.x();
-              cmd.velocity.y = vel.y();
-              cmd.velocity.z = vel.z();
+              cmd.Vector3.velocity.x = vel.x();
+              cmd.pose.velocity.y = vel.y();
+              cmd.pose.velocity.z = vel.z();
             } else {
               cmd.velocity.x = cmd.velocity.y = cmd.velocity.z = 0.0;
             }
