@@ -314,21 +314,20 @@ bool FastPlannerManager::kinodynamicReplan(Eigen::Vector3d start_pt, Eigen::Vect
       return false;
     }
 
-    // PolynomialTraj로 변환 (간단히 직선 연결 or 샘플링)
-    Eigen::MatrixXd pos(3, theta_path.size());
+    // PolynomialTraj로 변환
+    Eigen::MatrixXd pos(3,theta_path.size());
     Eigen::VectorXd t(theta_path.size() - 1);
 
     for (size_t i = 0; i < theta_path.size(); i++) {
       pos.col(i) = theta_path[i];
 
-      // 각 구간 길이를 속도로 나눠서 시간 할당
+      // 구간 길이 / 속도
       if (i < theta_path.size() - 1) {
         double dist = (theta_path[i+1] - theta_path[i]).norm();
         t(i) = dist / std::max(0.1, pp_.max_vel_);
       }
     }
 
-    // 최소 스냅 트라젝토리 생성
     PolynomialTraj traj = PolynomialTraj::minSnapTraj(
         pos,
         Eigen::Vector3d::Zero(),  // 시작 속도
