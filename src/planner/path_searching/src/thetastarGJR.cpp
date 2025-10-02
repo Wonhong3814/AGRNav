@@ -79,19 +79,19 @@ static bool checkJumpArc(const EDTEnvironment::Ptr& env,
   //int steps = std::ceil(horiz_len / res);
   int steps = std::max(10, (int)std::ceil(horiz_len / res));
 
-  if (steps < 2) steps = 2;  // ìat least 2
+  if (steps < 2) steps = 2;  // Ã¬at least 2
 
   std::vector<Eigen::Vector3d> samples;
   samples.reserve(steps);
   
   Eigen::Vector2d delta_xy = delta_world.head<2>();
   for (int i = 0; i <= steps; ++i) {
-    double t = static_cast<double>(i) / steps;   // ìratio 0~1
+    double t = static_cast<double>(i) / steps;   // Ã¬ratio 0~1
     Eigen::Vector2d step_xy = delta_xy * t;  //xy
     double z = PARABOLA_COEFF * jump_apex * t * (1.0 - t);  // z 
     Eigen::Vector3d p = from + Eigen::Vector3d(step_xy.x(), step_xy.y(), z);  //p
 
-    // ì¶col check
+    // Ã¬Â¶col check
     if (env->sdf_map_->getInflateOccupancy(p) != 0) {
       return false;  
     }
@@ -349,7 +349,7 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
                    resolution_, g_jump_apex, g_jump_samples,
                    cur_node->position, &arc);
 
-      // âvisualization
+      // visualization
       if (!arc.empty() && jump_vis_pub) {
         visualization_msgs::Marker m;
         m.header.frame_id = "world";
@@ -384,7 +384,7 @@ void ThetastarGJR::retrievePath(NodePtr end_node) {
             cmd.position.y = arc[i].y();
             cmd.position.z = arc[i].z();
 
-            // ëvelocity estimate
+            // velocity estimate
             if (i > 0) {
               Eigen::Vector3d vel = (arc[i] - arc[i-1]) / dt;
               cmd.velocity.x = vel.x()/10;
