@@ -68,7 +68,7 @@
     <param name="sdf_map/local_bound_inflate"    value="0.0"/>
     <param name="sdf_map/local_map_margin" value="50"/>
     <param name="sdf_map/ground_height"        value="-0.1"/>
-    <param name="sdf_map/global_sensing"        value="false"/>  <!-- true: read global map; false: read local depth image-->
+    <param name="sdf_map/global_sensing"        value="true"/>  <!-- true: read global map; false: read local depth image-->
     <!-- camera parameter -->
     <param name="sdf_map/cx" value="$(arg cx)"/>
     <param name="sdf_map/cy" value="$(arg cy)"/>

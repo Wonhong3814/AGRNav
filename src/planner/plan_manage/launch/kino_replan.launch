@@ -3,6 +3,8 @@
   <arg name="map_size_x" value="20.0"/>
   <arg name="map_size_y" value="20.0"/>
   <arg name="map_size_z" value="5.0"/>
+  <arg name="global_sensing" default="true"/>
+  <param name="sdf_map/global_sensing" value="$(arg global_sensing)"/>
 
   <!-- topic of your odometry such as VIO or LIO -->
   <arg name="odom_topic" value="visual_slam/odom" />
